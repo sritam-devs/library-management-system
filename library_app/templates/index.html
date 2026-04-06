@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Library Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            margin: 40px;
+        }
+        h1 { text-align: center; }
+        .card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            width: 180px;
+        }
+        button {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+        }
+        th { background: #333; color: white; }
+        tr:hover { background: #f1f1f1; }
+        .actions button { margin: 0 4px; }
+    </style>
+</head>
+<body>
+
+<h1>📚 Library Management System</h1>
+
+<div class="card">
+    <h3>Add Book</h3>
+    <input id="sn" placeholder="Serial Number">
+    <input id="title" placeholder="Title">
+    <input id="author" placeholder="Author">
+    <input id="price" placeholder="Price">
+    <button onclick="addBook()">Add Book</button>
+</div>
+
+<div class="card">
+    <h3>Search Books</h3>
+    <input id="searchAuthor" placeholder="Search by Author">
+    <input id="searchTitle" placeholder="Search by Title">
+    <button onclick="searchBooks()">Search</button>
+    <button onclick="loadBooks()">View All</button>
+</div>
+
+<div class="card">
+    <h3>Rent a Book</h3>
+    <input id="rentSN" placeholder="Serial Number">
+    <input id="renterName" placeholder="Renter Name">
+    <input id="contact" placeholder="Contact Number">
+    <input id="amount" placeholder="Amount Paid">
+    <button onclick="submitRent()">Rent Book</button>
+</div>
+
+<div class="card">
+    <h3>Book Records</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>SN</th>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Price</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="bookTable"></tbody>
+    </table>
+</div>
+
+<script>
+const API = "/api/books/";
+
+function addBook() {
+    fetch(API, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            serial_number: sn.value,
+            title: title.value,
+            author: author.value,
+            price: price.value
+        })
+    }).then(res => res.json())
+      .then(() => {
+          clearInputs();
+          loadBooks();
+      });
+}
+
+function loadBooks() {
+    fetch(API)
+    .then(res => res.json())
+    .then(showBooks);
+}
+
+function searchBooks() {
+    let url = API + "?";
+    if (searchAuthor.value)
+        url += "author=" + searchAuthor.value + "&";
+    if (searchTitle.value)
+        url += "title=" + searchTitle.value;
+
+    fetch(url)
+    .then(res => res.json())
+    .then(showBooks);
+}
+
+function deleteBook(sn) {
+    fetch(API + sn + "/", { method: "DELETE" })
+    .then(() => loadBooks());
+}
+
+function showBooks(data) {
+    let table = document.getElementById("bookTable");
+    table.innerHTML = "";
+    data.forEach(b => {
+        table.innerHTML += `
+            <tr>
+                <td>${b.serial_number}</td>
+                <td>${b.title}</td>
+                <td>${b.author}</td>
+                <td>₹${b.price}</td>
+                <td class="actions">
+                    <button onclick="editBook('${b.serial_number}', '${b.price}')">Edit</button>
+                    <button onclick="rentBook('${b.serial_number}')">Rent</button>
+                    <button onclick="deleteBook('${b.serial_number}')">Delete</button>
+                </td>
+            </tr>`;
+    });
+}
+
+function editBook(sn, oldPrice) {
+    let newPrice = prompt("Enter new price:", oldPrice);
+    if (newPrice) {
+        fetch(API + sn + "/", {
+            method: "PATCH",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ price: newPrice })
+        }).then(() => loadBooks());
+    }
+}
+
+function rentBook(sn) {
+    rentSN.value = sn;
+    window.scrollTo(0, document.body.scrollHeight);
+}
+
+function submitRent() {
+    fetch("/api/rent/", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            book_sn: rentSN.value,
+            renter_name: renterName.value,
+            contact_number: contact.value,
+            amount_paid: amount.value
+        })
+    }).then(() => alert("Book Rented Successfully"));
+}
+
+function clearInputs() {
+    sn.value = "";
+    title.value = "";
+    author.value = "";
+    price.value = "";
+}
+
+loadBooks();
+</script>
+
+</body>
+</html>
