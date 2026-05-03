@@ -38,13 +38,37 @@
         th { background: #333; color: white; }
         tr:hover { background: #f1f1f1; }
         .actions button { margin: 0 4px; }
+
+        .navbar {
+            text-align: center;
+            margin-bottom: 20px;
+}
+        .navbar button {
+            margin: 0 10px;
+            padding: 10px 18px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 6px;
+        }
+        .navbar button:hover {
+            background: #555;
+        }
     </style>
 </head>
 <body>
 
 <h1>📚 Library Management System</h1>
 
-<div class="card">
+<div class="navbar">
+    <button onclick="showSection('add')">Add Book</button>
+    <button onclick="showSection('search')">Search Books</button>
+    <button onclick="showSection('rent')">Rent Book</button>
+    <button onclick="showSection('records')">Records</button>
+</div>
+
+<!-- Add Book -->
+<div id="add" class="card section">
     <h3>Add Book</h3>
     <input id="sn" placeholder="Serial Number">
     <input id="title" placeholder="Title">
@@ -53,7 +77,8 @@
     <button onclick="addBook()">Add Book</button>
 </div>
 
-<div class="card">
+<!-- Search -->
+<div id="search" class="card section" style="display:none;">
     <h3>Search Books</h3>
     <input id="searchAuthor" placeholder="Search by Author">
     <input id="searchTitle" placeholder="Search by Title">
@@ -61,7 +86,8 @@
     <button onclick="loadBooks()">View All</button>
 </div>
 
-<div class="card">
+<!-- Rent -->
+<div id="rent" class="card section" style="display:none;">
     <h3>Rent a Book</h3>
     <input id="rentSN" placeholder="Serial Number">
     <input id="renterName" placeholder="Renter Name">
@@ -70,7 +96,8 @@
     <button onclick="submitRent()">Rent Book</button>
 </div>
 
-<div class="card">
+<!-- Records -->
+<div id="records" class="card section" style="display:none;">
     <h3>Book Records</h3>
     <table>
         <thead>
@@ -89,6 +116,68 @@
 <script>
 const API = "/api/books/";
 
+/* ---------- NAVIGATION ---------- */
+function showSection(id) {
+    document.querySelectorAll('.section').forEach(sec => {
+        sec.style.display = "none";
+    });
+    document.getElementById(id).style.display = "block";
+}
+
+/* ---------- TABLE RENDER (ONLY PLACE THAT TOUCHES TABLE) ---------- */
+function renderTable(data) {
+    const table = document.getElementById("bookTable");
+    table.innerHTML = "";
+
+    data.forEach(b => {
+        table.innerHTML += `
+        <tr>
+            <td>${b.serial_number}</td>
+            <td>${b.title}</td>
+            <td>${b.author}</td>
+            <td>₹${b.price}</td>
+            <td class="actions">
+                <button onclick="editBook('${b.serial_number}', '${b.price}')">Edit</button>
+                <button onclick="rentBook('${b.serial_number}')">Rent</button>
+                <button onclick="deleteBook('${b.serial_number}')">Delete</button>
+            </td>
+        </tr>`;
+    });
+}
+
+/* ---------- LOAD ALL BOOKS ---------- */
+function loadBooks() {
+    fetch(API)
+        .then(res => res.json())
+        .then(data => {
+            showSection('records');
+            renderTable(data);
+        });
+}
+
+/* ---------- SEARCH BOOKS (PARTIAL WORKS) ---------- */
+function searchBooks() {
+    let author = searchAuthor.value.trim();
+    let title = searchTitle.value.trim();
+
+    let url = API;
+
+    if (author || title) {
+        const params = new URLSearchParams();
+        if (author) params.append("author", author);
+        if (title) params.append("title", title);
+        url += "?" + params.toString();
+    }
+
+    fetch(url)
+        .then(res => res.json())
+        .then(data => {
+            showSection('records');
+            renderTable(data);
+        });
+}
+
+/* ---------- ADD BOOK ---------- */
 function addBook() {
     fetch(API, {
         method: "POST",
@@ -99,55 +188,19 @@ function addBook() {
             author: author.value,
             price: price.value
         })
-    }).then(res => res.json())
-      .then(() => {
-          clearInputs();
-          loadBooks();
-      });
-}
-
-function loadBooks() {
-    fetch(API)
-    .then(res => res.json())
-    .then(showBooks);
-}
-
-function searchBooks() {
-    let url = API + "?";
-    if (searchAuthor.value)
-        url += "author=" + searchAuthor.value + "&";
-    if (searchTitle.value)
-        url += "title=" + searchTitle.value;
-
-    fetch(url)
-    .then(res => res.json())
-    .then(showBooks);
-}
-
-function deleteBook(sn) {
-    fetch(API + sn + "/", { method: "DELETE" })
-    .then(() => loadBooks());
-}
-
-function showBooks(data) {
-    let table = document.getElementById("bookTable");
-    table.innerHTML = "";
-    data.forEach(b => {
-        table.innerHTML += `
-            <tr>
-                <td>${b.serial_number}</td>
-                <td>${b.title}</td>
-                <td>${b.author}</td>
-                <td>₹${b.price}</td>
-                <td class="actions">
-                    <button onclick="editBook('${b.serial_number}', '${b.price}')">Edit</button>
-                    <button onclick="rentBook('${b.serial_number}')">Rent</button>
-                    <button onclick="deleteBook('${b.serial_number}')">Delete</button>
-                </td>
-            </tr>`;
+    }).then(() => {
+        clearInputs();
+        loadBooks();
     });
 }
 
+/* ---------- DELETE ---------- */
+function deleteBook(sn) {
+    fetch(API + sn + "/", { method: "DELETE" })
+        .then(() => loadBooks());
+}
+
+/* ---------- EDIT ---------- */
 function editBook(sn, oldPrice) {
     let newPrice = prompt("Enter new price:", oldPrice);
     if (newPrice) {
@@ -159,9 +212,10 @@ function editBook(sn, oldPrice) {
     }
 }
 
+/* ---------- RENT ---------- */
 function rentBook(sn) {
+    showSection('rent');
     rentSN.value = sn;
-    window.scrollTo(0, document.body.scrollHeight);
 }
 
 function submitRent() {
@@ -174,9 +228,13 @@ function submitRent() {
             contact_number: contact.value,
             amount_paid: amount.value
         })
-    }).then(() => alert("Book Rented Successfully"));
+    }).then(() => {
+        alert("Book Rented Successfully");
+        loadBooks();
+    });
 }
 
+/* ---------- CLEAR INPUTS ---------- */
 function clearInputs() {
     sn.value = "";
     title.value = "";
@@ -184,7 +242,8 @@ function clearInputs() {
     price.value = "";
 }
 
-loadBooks();
+/* ---------- START ON ADD BOOK TAB ---------- */
+showSection('add');
 </script>
 
 </body>
