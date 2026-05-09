@@ -1,8 +1,6 @@
 from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import Book
-from .serializers import BookSerializer
 from .utils import sync_to_csv
 from .models import Book, Rent
 from .serializers import BookSerializer, RentSerializer
